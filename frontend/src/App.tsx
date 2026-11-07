@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { downloadReport, getHealth, getHistory, getRun, getScenarios, rerunVerification, verifyCode } from "./api";
-import type { Health, HistoryItem, Run, Scenario } from "./types";
+import type { Finding, Health, HistoryItem, Run, Scenario } from "./types";
 
 const PIPELINE = [
-  ["ingest", "Code change"],
-  ["meta_ai", "AI analysis"],
-  ["test_generation", "Security test generation"],
-  ["sandbox", "Test execution"],
-  ["persist", "Evidence"],
-  ["decision", "Decision"],
+  ["ingest", "Code submission"],
+  ["policies", "Policy checks"],
+  ["static_analysis", "Static analysis"],
+  ["meta_ai", "Meta AI review"],
+  ["test_generation", "Adversarial tests"],
+  ["sandbox", "Sandbox execution"],
+  ["persist", "Security evidence"],
+  ["decision", "Final decision"],
 ];
 
 const EMPTY_STAGES = [
@@ -175,10 +177,14 @@ export function App() {
   return (
     <div className="page">
       <header className="top">
-        <div>
-          <p className="eyebrow">Trust but verify</p>
-          <h1>MedGuard AI</h1>
-          <p className="lede">Independent verification for medical software changes. The coding agent's explanation is not evidence.</p>
+        <div className="brand">
+          <div className="brand-mark" aria-hidden="true">MG</div>
+          <div>
+            <p className="eyebrow">Trust but verify</p>
+            <h1>MedGuard AI</h1>
+            <p className="tagline">The AI That Doesn't Trust AI.</p>
+            <p className="lede">Independent security verification for medical software. Explanations are not evidence.</p>
+          </div>
         </div>
         <div className="chips" aria-label="Runtime status">
           <StatusChip
@@ -211,6 +217,12 @@ export function App() {
             title={health?.mongodb.retrieval_label}
             tone={health?.mongodb.vector_search === "active" ? "good" : "warn"}
           />
+          <StatusChip
+            label="Current run"
+            value={run?.decision ?? (run?.status === "running" ? "In progress" : run ? "Decision unavailable" : "Ready")}
+            title={run?.decision_reason || run?.status || "No verification submitted"}
+            tone={run?.decision === "APPROVE" ? "good" : run?.decision === "BLOCK" ? "danger" : "warn"}
+          />
         </div>
       </header>
 
@@ -218,29 +230,43 @@ export function App() {
       {health ? <p className="disclaimer">{health.disclaimer}</p> : null}
 
       <section className="panel demo-bar">
-        <h2>Three-minute demonstration</h2>
-        <p className="note">Each step uses the code on screen and the tests the sandbox actually runs.</p>
+        <div>
+          <p className="eyebrow">Live demo</p>
+          <h2>Compare a vulnerable change with its corrected version</h2>
+          <p className="note">Each verification uses the selected source and reports only checks returned by the backend.</p>
+        </div>
         <div className="demo-actions">
-          <button type="button" onClick={() => loadScenario("vulnerable-cross-clinic")}>1. Vulnerable change</button>
-          <button type="button" onClick={onVerify} disabled={busy || code.trim().length === 0}>2. Run MedGuard</button>
-          <button type="button" onClick={() => loadScenario("corrected-clinic-scope")}>3. Corrected change</button>
-          <button type="button" onClick={onVerify} disabled={busy || code.trim().length === 0}>4. Verify the fix</button>
+          <button type="button" onClick={() => loadScenario("vulnerable-cross-clinic")}>Load vulnerable API</button>
+          <button type="button" className="button-primary" onClick={onVerify} disabled={busy || code.trim().length === 0}>
+            {busy ? "Verification running…" : "Verify selected code"}
+          </button>
+          <button type="button" onClick={() => loadScenario("corrected-clinic-scope")}>Load corrected API</button>
         </div>
       </section>
 
       <main className="layout">
-        <section className="panel">
-          <h2>Submitted change</h2>
-          <div className="scenarios" role="listbox" aria-label="Synthetic examples">
+        <section className="panel code-panel">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">01 / Source</p>
+              <h2>Submitted change</h2>
+            </div>
+            <span className="synthetic-label">Synthetic data only</span>
+          </div>
+          <div className="scenarios" role="group" aria-label="Demo scenarios">
             {scenarios.map((scenario) => (
               <button
                 key={scenario.id}
                 className={scenario.id === selectedId ? "scenario active" : "scenario"}
                 onClick={() => choose(scenario)}
                 type="button"
+                aria-pressed={scenario.id === selectedId}
               >
-                <span>{scenario.title}</span>
-                <small>Documented outcome {scenario.expected_decision}</small>
+                <span className="scenario-copy">
+                  <strong>{scenario.title}</strong>
+                  <small>{scenario.filename}</small>
+                </span>
+                <span className={`fixture ${scenario.expected_decision.toLowerCase()}`}>Fixture: {scenario.expected_decision}</span>
               </button>
             ))}
           </div>
@@ -275,27 +301,35 @@ export function App() {
             </div>
           ) : null}
           <label className="code-label" htmlFor="code">
-            Python under review {unmodified ? "(unmodified example)" : "(edited)"}
+            <span>Python source</span>
+            <span className="code-state">{unmodified ? "Example unchanged" : "Local edits"}</span>
           </label>
-          <textarea id="code" spellCheck={false} value={code} onChange={(event) => setCode(event.target.value)} />
+          <CodeViewer value={code} onChange={setCode} />
           <button className="verify" type="button" onClick={onVerify} disabled={busy || code.trim().length === 0}>
             {busy ? "Verifying…" : "Verify Code"}
           </button>
           {error ? <p className="form-error">{error}</p> : null}
         </section>
 
-        <section className="panel">
-          <h2>Verification</h2>
-          <ol className="pipeline" aria-label="Verification pipeline">
+        <section className="panel results-panel">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">02 / Independent checks</p>
+              <h2>Verification pipeline</h2>
+            </div>
+            {run ? <span className="run-id">RUN {run.run_id.slice(0, 8)}</span> : null}
+          </div>
+          <Decision run={run} expected={unmodified ? selected?.expected_decision ?? null : null} />
+          <ol className="pipeline" aria-label="Verification pipeline" aria-live="polite">
             {PIPELINE.map(([id, label], index) => {
               const stage = stages.find((item) => item.id === id);
               const status = stage?.status ?? "pending";
               return (
                 <li key={id} className={`pipe ${status}`}>
-                  <span>{index + 1}</span>
+                  <span className="pipe-index">{status === "completed" ? "✓" : index + 1}</span>
                   <strong>{label}</strong>
-                  <em>{status}</em>
-                  {index < PIPELINE.length - 1 ? <i aria-hidden="true">↓</i> : null}
+                  <em>{status === "pending" ? "Waiting" : status}</em>
+                  {stage?.detail ? <small>{stage.detail}</small> : null}
                 </li>
               );
             })}
@@ -316,7 +350,6 @@ export function App() {
             ))}
           </ol>
 
-          <Decision run={run} expected={unmodified ? selected?.expected_decision ?? null : null} />
           {run?.decision ? (
             <div className="demo-actions">
               <button type="button" onClick={onDownload}>Download JSON report</button>
@@ -344,11 +377,11 @@ export function App() {
 
           {run ? (
             <>
-              <h3>Confirmed findings</h3>
+              <h3 className="subsection-title">Confirmed security findings</h3>
               <FindingList items={confirmed} empty="No confirmed static findings." />
-              <h3>Unconfirmed leads</h3>
+              <h3 className="subsection-title">AI and heuristic leads</h3>
               <FindingList items={leads} empty="No heuristic leads." />
-              <h3>Executed security tests</h3>
+              <h3 className="subsection-title">Executed security tests</h3>
               <p className="note">
                 {run.adversarial?.label
                   ? run.adversarial.label
@@ -444,7 +477,12 @@ export function App() {
       </main>
 
       <section className="panel history">
-        <h2>Previous runs</h2>
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">03 / Audit trail</p>
+            <h2>Verification history</h2>
+          </div>
+        </div>
         {history.length === 0 ? <p className="note">No stored runs yet.</p> : null}
         <ul>
           {history.map((item) => (
@@ -452,6 +490,7 @@ export function App() {
               <button type="button" onClick={() => openHistory(item.run_id)}>
                 <strong className={item.decision ?? "pending"}>{item.decision ?? item.status}</strong>
                 <span>{item.scenario_id ?? "custom code"}</span>
+                <span title={item.code_sha256}>SHA {item.code_sha256 ? item.code_sha256.slice(0, 12) : "pending"}</span>
                 <span>{item.storage_backend}</span>
                 <span>{item.created_at}</span>
               </button>
@@ -474,7 +513,7 @@ function retrievalChip(health: Health | null): string {
   return "Local keyword";
 }
 
-function StatusChip({ label, value, title, tone }: { label: string; value: string; title?: string; tone: "good" | "warn" }) {
+function StatusChip({ label, value, title, tone }: { label: string; value: string; title?: string; tone: "good" | "warn" | "danger" }) {
   return (
     <div className={`chip ${tone}`} title={title ?? value}>
       <span>{label}</span>
@@ -485,18 +524,23 @@ function StatusChip({ label, value, title, tone }: { label: string; value: strin
 
 function Decision({ run, expected }: { run: Run | null; expected: string | null }) {
   if (!run?.decision) {
-    return <p className="decision pending">No verification decision yet.</p>;
+    return (
+      <div className="decision pending" aria-live="polite">
+        <span>{run?.status === "running" ? "VERIFYING" : "NO DECISION"}</span>
+        <p>{run?.status === "running" ? "Checks are still executing. No outcome is being assumed." : "Submit code to begin independent verification."}</p>
+      </div>
+    );
   }
   return (
     <div className={`decision ${run.decision.toLowerCase()}`}>
       <span>{run.decision}</span>
       <p>{run.decision_reason}</p>
-      {expected ? <p>{run.decision === expected ? "Matches the documented outcome for this unmodified example." : `Documented outcome for the unmodified example is ${expected}.`}</p> : null}
+      {expected ? <p className="fixture-note">Fixture reference only: {expected}. The decision above comes from this run's evidence.</p> : null}
     </div>
   );
 }
 
-function FindingList({ items, empty }: { items: { policy_id: string; title: string; source: string; description: string; line: number | null; confirmed: boolean }[]; empty: string }) {
+function FindingList({ items, empty }: { items: Finding[]; empty: string }) {
   if (items.length === 0) {
     return <p className="note">{empty}</p>;
   }
@@ -504,11 +548,78 @@ function FindingList({ items, empty }: { items: { policy_id: string; title: stri
     <ul className="findings">
       {items.map((item, index) => (
         <li key={`${item.policy_id}-${item.line}-${index}`}>
-          <strong>{item.policy_id}</strong> {item.title}
-          <em>{item.source}{item.line ? ` · line ${item.line}` : ""}</em>
+          <div className="finding-title">
+            <span className={`severity ${item.severity.toLowerCase()}`}>{item.severity}</span>
+            <strong>{item.title}</strong>
+          </div>
+          <em>{item.policy_id} · {item.source}{item.line ? ` · line ${item.line}` : ""}</em>
           <p>{item.description}</p>
+          <p className="remediation"><strong>Recommended remediation:</strong> {item.recommendation}</p>
         </li>
       ))}
     </ul>
   );
+}
+
+const PYTHON_TOKEN = /#.*$|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield|and|as|assert)\b|\b(?:True|False|None)\b|\b\d+(?:\.\d+)?\b|\b[A-Za-z_]\w*(?=\s*\()/g;
+
+function CodeViewer({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const highlight = useRef<HTMLPreElement>(null);
+  const lines = value.split("\n");
+
+  function syncScroll(event: React.UIEvent<HTMLTextAreaElement>) {
+    if (!highlight.current) return;
+    highlight.current.scrollTop = event.currentTarget.scrollTop;
+    highlight.current.scrollLeft = event.currentTarget.scrollLeft;
+  }
+
+  return (
+    <div className="code-editor">
+      <pre className="code-highlight" ref={highlight} aria-hidden="true">
+        <code>
+          {lines.map((line, index) => (
+            <span className="code-line" key={index}>
+              <span className="line-number">{index + 1}</span>
+              <span>{highlightPython(line)}</span>
+            </span>
+          ))}
+        </code>
+      </pre>
+      <textarea
+        id="code"
+        className="code-input"
+        aria-label="Python source under review"
+        spellCheck={false}
+        wrap="off"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onScroll={syncScroll}
+      />
+    </div>
+  );
+}
+
+function highlightPython(line: string) {
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+  for (const match of line.matchAll(PYTHON_TOKEN)) {
+    const token = match[0];
+    const start = match.index ?? 0;
+    if (start > cursor) parts.push(line.slice(cursor, start));
+    const kind = token.startsWith("#")
+      ? "comment"
+      : token.startsWith("\"") || token.startsWith("'")
+        ? "string"
+        : /^(True|False|None)$/.test(token)
+          ? "literal"
+          : /^\d/.test(token)
+            ? "number"
+            : /^(async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield|and|as|assert)$/.test(token)
+              ? "keyword"
+              : "function";
+    parts.push(<span className={`token-${kind}`} key={start}>{token}</span>);
+    cursor = start + token.length;
+  }
+  if (cursor < line.length) parts.push(line.slice(cursor));
+  return parts;
 }
