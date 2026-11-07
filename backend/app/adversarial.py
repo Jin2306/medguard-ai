@@ -135,12 +135,20 @@ def build_adversarial_layer(*, meta_source: str | None, meta_error: str | None, 
     validation = validate_test_source(base["source"])
     rejected = []
     origin = "deterministic_fallback" if meta_mode != "live" else "meta_plus_deterministic"
-    if meta_mode != "live":
+    if meta_mode == "demo":
         rejected.append(
             {
                 "origin": "meta",
                 "accepted": False,
                 "reason": "DEMO MODE. Meta did not generate tests because credentials are not configured.",
+            }
+        )
+    elif meta_mode != "live":
+        rejected.append(
+            {
+                "origin": "meta",
+                "accepted": False,
+                "reason": (meta_error or "Meta adversarial generation failed.")[:500],
             }
         )
     elif meta_error:
