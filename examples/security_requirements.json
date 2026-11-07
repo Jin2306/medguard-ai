@@ -1,0 +1,15 @@
+{
+  "endpoint": "GET /patients/{patient_id}",
+  "summary": "A clinician may read a patient in their own clinic. No one else may.",
+  "expected_authorization": [
+    "Unauthenticated callers are rejected.",
+    "Callers who are not clinicians are rejected.",
+    "A clinician in clinic-a may read patient p-100 (Alex Rivera).",
+    "A clinician in clinic-a must not read patient p-200 (Jordan Blake, clinic-b).",
+    "A clinician in clinic-b must not read patient p-100.",
+    "Patient ids must match p-###. Malicious ids are rejected.",
+    "Logs must not include dates of birth, MRNs, or credentials.",
+    "Source must not contain hardcoded credentials or string-built SQL."
+  ],
+  "out_of_scope": "These requirements are a hackathon control set. Meeting them is not a HIPAA determination."
+}

@@ -1,0 +1,25 @@
+name: MedGuard verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Python file to verify
+        default: examples/corrected_patient_api.py
+        required: true
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install MedGuard
+        run: pip install -r requirements.txt
+      - name: Build the sandbox image
+        run: docker build -t medguard-sandbox:latest -f sandbox/Dockerfile sandbox
+      - name: Verify the selected change
+        run: python scripts/medguard_gate.py "${{ github.event.inputs.target || 'examples/corrected_patient_api.py' }}"

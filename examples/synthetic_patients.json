@@ -1,0 +1,31 @@
+{
+  "notice": "Synthetic records invented for this demo. They are not real patients.",
+  "patients": [
+    {
+      "patient_id": "p-100",
+      "name": "Alex Rivera",
+      "clinic_id": "clinic-a",
+      "dob": "1984-03-12",
+      "mrn": "MRN-A-100"
+    },
+    {
+      "patient_id": "p-200",
+      "name": "Jordan Blake",
+      "clinic_id": "clinic-b",
+      "dob": "1990-11-02",
+      "mrn": "MRN-B-200"
+    }
+  ],
+  "forbidden_in_logs": [
+    "1984-03-12",
+    "1990-11-02",
+    "MRN-A-100",
+    "MRN-B-200",
+    "sk-live-clinic-secret-12345",
+    "ClinicAdmin!2024"
+  ],
+  "forbidden_literals": [
+    "sk-live-clinic-secret-12345",
+    "ClinicAdmin!2024"
+  ]
+}

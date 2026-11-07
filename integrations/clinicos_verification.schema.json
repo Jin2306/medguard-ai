@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medguard.local/clinicos-verification-request.schema.json",
+  "title": "ClinicOS verification request",
+  "description": "Future ClinicOS components can submit this payload to POST /api/verify. MedGuard does not connect to ClinicOS or to production patient databases. Records in the demo are synthetic.",
+  "type": "object",
+  "required": ["code"],
+  "properties": {
+    "code": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100000,
+      "description": "Python source under review."
+    },
+    "scenario_id": { "type": ["string", "null"] },
+    "requirements": {
+      "type": ["string", "null"],
+      "description": "Security requirements supplied by the caller. Stored with the run and shown to the independent reviewer. They do not replace MedGuard policy."
+    },
+    "policy_version": {
+      "type": ["string", "null"],
+      "description": "Requested policy version. If it is not the loaded pack, the decision is REVIEW."
+    },
+    "component": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "language": { "type": "string", "const": "python" },
+        "component_id": { "type": ["string", "null"] }
+      }
+    },
+    "rerun_of": { "type": ["string", "null"] }
+  }
+}

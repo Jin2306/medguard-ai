@@ -1,0 +1,27 @@
+rules:
+  - id: medguard-hardcoded-secret
+    languages: [python]
+    severity: ERROR
+    message: Hardcoded credential in medical software.
+    metadata:
+      policy_id: POL-05
+      category: security
+    pattern-regex: (?i)(password|api_key|secret|token)\s*=\s*["'][^"']{4,}["']
+
+  - id: medguard-sensitive-log
+    languages: [python]
+    severity: ERROR
+    message: Sensitive field written to an application log.
+    metadata:
+      policy_id: POL-06
+      category: security
+    pattern-regex: (?is)(logger|logging)\.(debug|info|warning|error|exception|critical)\(.{0,500}?(dob|mrn|ssn|diagnosis|date_of_birth)
+
+  - id: medguard-string-built-sql
+    languages: [python]
+    severity: ERROR
+    message: SQL query built with string formatting.
+    metadata:
+      policy_id: POL-07
+      category: security
+    pattern-regex: (?i)f["'][^"']*select\s+

@@ -1,0 +1,54 @@
+{
+  "version": "medguard-policy-2026.1",
+  "disclaimer": "Passing these checks does not establish HIPAA compliance. Use synthetic records only.",
+  "policies": [
+    {
+      "id": "POL-01",
+      "title": "Unauthorized patient record access",
+      "mandatory": true,
+      "description": "A caller may read a patient record only when the caller is allowed to see that specific record."
+    },
+    {
+      "id": "POL-02",
+      "title": "Cross-clinic data exposure",
+      "mandatory": true,
+      "description": "A user from one clinic must not retrieve a patient assigned to another clinic."
+    },
+    {
+      "id": "POL-03",
+      "title": "Missing authentication",
+      "mandatory": true,
+      "description": "Patient record reads require an authenticated caller."
+    },
+    {
+      "id": "POL-04",
+      "title": "Missing authorization",
+      "mandatory": true,
+      "description": "Only a clinician role may read patient records."
+    },
+    {
+      "id": "POL-05",
+      "title": "Hardcoded credentials",
+      "mandatory": true,
+      "description": "Passwords, API keys, and tokens must not be literals in source."
+    },
+    {
+      "id": "POL-06",
+      "title": "Sensitive information in application logs",
+      "mandatory": true,
+      "description": "Logs must not contain date of birth, medical record numbers, or credentials."
+    },
+    {
+      "id": "POL-07",
+      "title": "Unsafe database queries",
+      "mandatory": true,
+      "description": "SQL must not be built by formatting user input into a query string."
+    },
+    {
+      "id": "POL-08",
+      "title": "Missing input validation",
+      "mandatory": true,
+      "description": "Patient ids must be validated before they are used."
+    }
+  ]
+}
